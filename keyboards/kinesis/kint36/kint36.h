@@ -109,4 +109,12 @@ PC5 kDx Row: F1  F4  F7  F10 PRT PRG --
 PC6 kEx Row: F2  F5  F8  F11 SLK KEY --
 */
 
+typedef struct {
+    uint32_t start;
+    uint32_t sof;
+    uint32_t report;
+} measurement_t;
+
+extern volatile measurement_t measurement;
+
 #endif

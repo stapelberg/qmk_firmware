@@ -1,5 +1,6 @@
 #include "kint36.h"
-#include "chprintf.h"
+
+volatile measurement_t measurement;
 
 // called once when the firmware starts up
 void matrix_init_kb(void) {
@@ -7,17 +8,21 @@ void matrix_init_kb(void) {
     led_init_ports();
 }
 
+volatile uint32_t last_scan;
+volatile uint32_t freq;
+
 // runs every cycle
 void matrix_scan_kb(void) {
-    // TODO: measure how long since the last scan callback, that is how long a scan takes
-    // only update variable, don’t print. user can query by toggling caps lock LED
+    // Measure the scan frequency. Printed when doing latency measurements.
+    uint32_t scan = DWT->CYCCNT;
+    freq          = (scan - last_scan);
+    last_scan     = scan;
+
     matrix_scan_user();
 }
 
 bool process_record_kb(uint16_t keycode, keyrecord_t *record) {
-    // could this be where we start latency measurement? is this when a keypress
-    // was detected? or should we start before debounce?
-
+    measurement.start = DWT->CYCCNT;
     return process_record_user(keycode, record);
 }
 
@@ -47,9 +52,17 @@ void led_init_ports() {
 }
 
 void led_set_kb(uint8_t usb_led) {
-    // TODO: take a time measurement here
-    chprintf((BaseSequentialStream *)&SD5, "led_set_kb\r\n");
-    dprintf("led_set_kb\n");
+    measurement.report = DWT->CYCCNT;
+
+    const uint32_t freq_us = (freq * 5.55) / 1000;
+    {
+        const uint32_t diff_ns      = (measurement.report - measurement.start) * 5.55;
+        const uint32_t diff_us      = diff_ns / 1000;
+        const uint32_t diff_prev_ns = (measurement.report - measurement.sof) * 5.55;
+        const uint32_t diff_prev_us = diff_prev_ns / 1000;
+        dprintf("press-to-report=%d us, press-to-usbsof=%d us, matrix-scan-freq=%d us\r\n", diff_us, diff_prev_us, freq_us);
+    }
+
     if (usb_led & (1 << USB_LED_COMPOSE)) {
         ledTurnOn(LED_KEYPAD);
     } else {

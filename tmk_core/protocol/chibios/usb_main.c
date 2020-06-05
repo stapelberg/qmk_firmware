@@ -27,6 +27,7 @@
 
 #include "ch.h"
 #include "hal.h"
+#include "kint36.h"
 
 #include "usb_main.h"
 
@@ -575,7 +576,10 @@ void kbd_in_cb(USBDriver *usbp, usbep_t ep) {
 /* start-of-frame handler
  * TODO: i guess it would be better to re-implement using timers,
  *  so that this is not going to have to be checked every 1ms */
-void kbd_sof_cb(USBDriver *usbp) { (void)usbp; }
+void kbd_sof_cb(USBDriver *usbp) {
+    (void)usbp;
+    measurement.sof = DWT->CYCCNT;
+}
 
 /* Idle requests timer code
  * callback (called from ISR, unlocked state) */
@@ -796,9 +800,7 @@ int8_t sendchar(uint8_t c) {
 }
 #endif /* CONSOLE_ENABLE */
 
-void _putchar(char character) {
-    sendchar(character);
-}
+void _putchar(char character) { sendchar(character); }
 
 #ifdef RAW_ENABLE
 void raw_hid_send(uint8_t *data, uint8_t length) {
